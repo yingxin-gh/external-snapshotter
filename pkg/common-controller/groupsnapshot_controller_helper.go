@@ -223,10 +223,10 @@ func (ctrl *csiSnapshotCommonController) getClaimsFromVolumeGroupSnapshot(groupS
 	// Get PVC that has group snapshot label applied.
 	pvcList, err := ctrl.client.CoreV1().PersistentVolumeClaims(groupSnapshot.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list PVCs with label selector %s: %q", labelSelector.String(), err)
+		return nil, fmt.Errorf("failed to list PVCs with label selector %s: %q", metav1.FormatLabelSelector(labelSelector), err)
 	}
 	if len(pvcList.Items) == 0 {
-		return nil, fmt.Errorf("label selector %s for group snapshot not applied to any PVC", labelSelector.String())
+		return nil, fmt.Errorf("label selector %s for group snapshot not applied to any PVC", metav1.FormatLabelSelector(labelSelector))
 	}
 	return pvcList.Items, nil
 }
@@ -625,7 +625,7 @@ func (ctrl *csiSnapshotCommonController) updateGroupSnapshotStatus(groupSnapshot
 
 			volumeSnapshotContent, err := ctrl.contentLister.Get(contentRef.VolumeSnapshotContentRef.Name)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get group snapshot content %s from group snapshot content store: %v", contentRef.VolumeSnapshotContentRef.Name, err)
+				return nil, fmt.Errorf("failed to get snapshot content %s from snapshot content store: %v", contentRef.VolumeSnapshotContentRef.Name, err)
 			}
 			pvcVolumeSnapshotRefList = append(pvcVolumeSnapshotRefList, crdv1alpha1.PVCVolumeSnapshotPair{
 				VolumeSnapshotRef: v1.LocalObjectReference{
@@ -1371,7 +1371,7 @@ func (ctrl *csiSnapshotCommonController) removeGroupSnapshotFinalizer(groupSnaps
 // getGroupSnapshotDriverName is a helper function to get driver from the VolumeGroupSnapshot.
 // We try to get the driverName in multiple ways, as snapshot controller metrics depend on the correct driverName.
 func (ctrl *csiSnapshotCommonController) getGroupSnapshotDriverName(vgs *crdv1alpha1.VolumeGroupSnapshot) (string, error) {
-	klog.V(5).Infof("getSnapshotDriverName: VolumeSnapshot[%s]", vgs.Name)
+	klog.V(5).Infof("getGroupSnapshotDriverName: VolumeGroupSnapshot[%s]", vgs.Name)
 	var driverName string
 
 	// Pre-Provisioned groupsnapshots have contentName as source
@@ -1396,9 +1396,9 @@ func (ctrl *csiSnapshotCommonController) getGroupSnapshotDriverName(vgs *crdv1al
 
 	// Dynamic groupsnapshots will have a groupsnapshotclass with a driver
 	if vgs.Spec.VolumeGroupSnapshotClassName != nil {
-		class, err := ctrl.getSnapshotClass(*vgs.Spec.VolumeGroupSnapshotClassName)
+		class, err := ctrl.getGroupSnapshotClass(*vgs.Spec.VolumeGroupSnapshotClassName)
 		if err != nil {
-			klog.Errorf("getGroupSnapshotDriverName: failed to get groupsnapshotClass: %v", *vgs.Spec.VolumeGroupSnapshotClassName)
+			klog.Errorf("getGroupSnapshotDriverName: failed to get groupSnapshotClass: %v", *vgs.Spec.VolumeGroupSnapshotClassName)
 		} else {
 			driverName = class.Driver
 		}
